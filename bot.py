@@ -108,8 +108,6 @@ def run_web():
 
 
 def main():
-    threading.Thread(target=run_web).start()
-
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -123,8 +121,19 @@ def main():
     app.add_handler(CommandHandler("migrar_cartao", migrar_cartao))
     app.add_handler(CommandHandler("configurar_tinfoil", configurar_tinfoil))
 
-    print("Bot está rodando...")
-    app.run_polling()
+    port = int(os.environ.get("PORT", 10000))
+    webhook_url = os.environ["WEBHOOK_URL"]
+    webhook_path = os.environ.get("WEBHOOK_PATH", "telegram-webhook")
+
+    print("Bot está rodando via webhook...")
+
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=webhook_path,
+        webhook_url=f"{webhook_url}/{webhook_path}",
+        drop_pending_updates=True,
+    )
 
 
 if __name__ == "__main__":
