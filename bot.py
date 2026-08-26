@@ -1,5 +1,7 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler
+from flask import Flask
+import threading
 import os
 
 TOKEN = os.environ["BOT_TOKEN"]
@@ -92,7 +94,22 @@ async def configurar_tinfoil(update: Update, context):
     )
 
 
+server = Flask(__name__)
+
+
+@server.route("/")
+def home():
+    return "Bot Telegram está online!"
+
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    server.run(host="0.0.0.0", port=port)
+
+
 def main():
+    threading.Thread(target=run_web).start()
+
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
