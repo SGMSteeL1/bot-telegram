@@ -92,16 +92,6 @@ async def configurar_tinfoil(update: Update, context):
     )
 
 
-@server.route("/")
-def home():
-    return "Bot Telegram está online!"
-
-
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    server.run(host="0.0.0.0", port=port)
-
-
 def main():
     app = Application.builder().token(TOKEN).build()
 
