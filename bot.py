@@ -1,7 +1,5 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler
-from flask import Flask
-import threading
 import os
 
 TOKEN = os.environ["BOT_TOKEN"]
@@ -92,9 +90,6 @@ async def configurar_tinfoil(update: Update, context):
         "4️⃣ Feche e abra o Tinfoil novamente.\n"
         "✅ Agora você pode baixar jogos no Tinfoil de graça!"
     )
-
-
-server = Flask(__name__)
 
 
 @server.route("/")
