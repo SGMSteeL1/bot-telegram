@@ -86,6 +86,84 @@ MENU_TRIGGERS = {
     "boa noite",
 }
 
+PRIVACY_POLICY_HTML = """
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Política de Privacidade - Steel Support Bot</title>
+  <style>
+    body {
+      color: #1f2933;
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 760px;
+      padding: 32px 20px;
+    }
+    h1, h2 {
+      color: #111827;
+    }
+  </style>
+</head>
+<body>
+  <h1>Política de Privacidade - Steel Support Bot</h1>
+  <p>Última atualização: 04/09/2026</p>
+
+  <h2>1. Finalidade</h2>
+  <p>O Steel Support Bot é um bot informativo para envio de tutoriais e links de ajuda mediante solicitação do usuário pelo WhatsApp.</p>
+
+  <h2>2. Dados recebidos</h2>
+  <p>Quando você envia uma mensagem ao bot, podemos receber o número de telefone, o identificador da mensagem e o conteúdo enviado, conforme disponibilizado pela Plataforma do WhatsApp Business.</p>
+
+  <h2>3. Uso dos dados</h2>
+  <p>Os dados são usados apenas para interpretar sua solicitação e responder com o tutorial ou menu correspondente.</p>
+
+  <h2>4. Armazenamento</h2>
+  <p>O bot não mantém banco de dados próprio com histórico de conversas. Identificadores de mensagens podem ser mantidos temporariamente em memória apenas para evitar respostas duplicadas.</p>
+
+  <h2>5. Compartilhamento</h2>
+  <p>Não vendemos nem compartilhamos dados pessoais com terceiros para fins de marketing. O processamento técnico ocorre por meio da infraestrutura da Meta/WhatsApp e do provedor de hospedagem do bot.</p>
+
+  <h2>6. Exclusão de dados</h2>
+  <p>Para solicitar remoção de informações relacionadas ao atendimento, envie uma mensagem para o próprio bot com o texto "excluir dados".</p>
+
+  <h2>7. Contato</h2>
+  <p>Para dúvidas sobre esta política, entre em contato pelo próprio número de WhatsApp do bot.</p>
+</body>
+</html>
+""".strip()
+
+DATA_DELETION_HTML = """
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Exclusão de Dados - Steel Support Bot</title>
+  <style>
+    body {
+      color: #1f2933;
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0 auto;
+      max-width: 760px;
+      padding: 32px 20px;
+    }
+    h1, h2 {
+      color: #111827;
+    }
+  </style>
+</head>
+<body>
+  <h1>Instruções de Exclusão de Dados - Steel Support Bot</h1>
+  <p>Para solicitar a exclusão de dados relacionados ao uso do bot, envie uma mensagem para o WhatsApp do Steel Support Bot com o texto "excluir dados".</p>
+  <p>O bot não mantém banco de dados próprio com histórico permanente de conversas. Identificadores mantidos temporariamente em memória são removidos automaticamente quando o serviço reinicia.</p>
+</body>
+</html>
+""".strip()
+
 
 def normalize_text(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value.strip().casefold())
@@ -243,6 +321,14 @@ async def health_check(request: web.Request) -> web.Response:
     return web.json_response({"status": "online", "service": "whatsapp-bot"})
 
 
+async def privacy_policy(request: web.Request) -> web.Response:
+    return web.Response(text=PRIVACY_POLICY_HTML, content_type="text/html")
+
+
+async def data_deletion(request: web.Request) -> web.Response:
+    return web.Response(text=DATA_DELETION_HTML, content_type="text/html")
+
+
 async def verify_webhook(request: web.Request) -> web.Response:
     mode = request.query.get("hub.mode")
     token = request.query.get("hub.verify_token")
@@ -294,6 +380,8 @@ def main() -> None:
 
     app = web.Application()
     app.router.add_get("/", health_check)
+    app.router.add_get("/privacy", privacy_policy)
+    app.router.add_get("/data-deletion", data_deletion)
     app.router.add_get("/webhook", verify_webhook)
     app.router.add_post("/webhook", receive_webhook)
     app.on_startup.append(on_startup)
