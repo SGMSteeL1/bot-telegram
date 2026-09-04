@@ -26,24 +26,32 @@ TUTORIALS = [
     {
         "command": "atualizar_switch",
         "title": "Como atualizar o Nintendo Switch para todas as versões pelo Computador",
+        "menu_title": "Atualizar Switch",
+        "menu_description": "Todas as versoes pelo computador",
         "link": "https://youtu.be/prRx1qwnQEE",
         "aliases": ["atualizar", "atualizar switch", "update"],
     },
     {
         "command": "instalar_jogos_pc",
         "title": "Como instalar jogos por arquivos baixados no computador e usar Bot do Telegram (Torrent)",
+        "menu_title": "Instalar jogos PC",
+        "menu_description": "Arquivos do PC e bot Telegram",
         "link": "https://encurtador.com.br/Pszl",
         "aliases": ["instalar jogos", "jogos pc", "torrent pc"],
     },
     {
         "command": "baixar_atualizacoes",
         "title": "Como baixar atualizações direto do Switch",
+        "menu_title": "Atualizacoes Switch",
+        "menu_description": "Baixe direto pelo console",
         "link": "https://www.youtube.com/watch?v=uGilRjPiZvM",
         "aliases": ["baixar atualizacoes", "atualizacoes", "updates"],
     },
     {
         "command": "configurar_emunand",
         "title": "Configuração ou reconfiguração de EmuNAND",
+        "menu_title": "Refazer EmuNAND",
+        "menu_description": "Reconfigure o sistema do zero",
         "description": "Para quem perdeu seus dados e quer refazer o sistema.",
         "link": "https://youtu.be/cV44016kquI",
         "aliases": ["emunand", "configurar emunand", "reconfigurar emunand"],
@@ -51,18 +59,24 @@ TUTORIALS = [
     {
         "command": "migrar_cartao",
         "title": "Como migrar para um cartão de memória maior",
+        "menu_title": "Migrar cartao SD",
+        "menu_description": "Troque para um cartao maior",
         "link": "https://youtu.be/bhNEleowFVc",
         "aliases": ["migrar cartao", "cartao maior", "sd maior"],
     },
     {
         "command": "telegram_joguinhos",
         "title": "Telegram de Joguinhos",
+        "menu_title": "Telegram joguinhos",
+        "menu_description": "Acesse o Telegram de jogos",
         "link": "https://nswtl.info/",
         "aliases": ["telegram", "joguinhos", "telegram joguinhos"],
     },
     {
         "command": "baixar_torrent_switch",
         "title": "Baixar Jogos via torrent direto do Switch + Bot Telegram",
+        "menu_title": "Torrent no Switch",
+        "menu_description": "Torrent direto no Switch",
         "link": "https://shre.ink/GtEz",
         "aliases": ["torrent switch", "baixar torrent", "torrent direto"],
     },
@@ -188,6 +202,8 @@ def build_aliases() -> dict[str, dict[str, Any]]:
 
 
 TUTORIAL_ALIASES = build_aliases()
+TUTORIAL_BY_COMMAND = {tutorial["command"]: tutorial for tutorial in TUTORIALS}
+MENU_TRIGGER_ALIASES = {normalize_text(trigger) for trigger in MENU_TRIGGERS}
 
 
 def build_menu_text() -> str:
@@ -214,20 +230,57 @@ def build_tutorial_text(tutorial: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_reply_text(user_text: str) -> str:
-    normalized_text = normalize_text(user_text)
+def is_menu_request(user_text: str) -> bool:
+    return normalize_text(user_text) in MENU_TRIGGER_ALIASES
 
-    if normalized_text in {normalize_text(trigger) for trigger in MENU_TRIGGERS}:
-        return build_menu_text()
 
-    tutorial = TUTORIAL_ALIASES.get(normalized_text)
-    if tutorial:
-        return build_tutorial_text(tutorial)
+def find_tutorial_by_text(user_text: str) -> dict[str, Any] | None:
+    return TUTORIAL_ALIASES.get(normalize_text(user_text))
 
-    return (
-        "Não encontrei essa opção.\n\n"
-        "Envie menu para ver todos os tutoriais disponíveis, ou envie diretamente o número da opção."
-    )
+
+def find_tutorial_by_interactive_reply(message: dict[str, Any]) -> dict[str, Any] | None:
+    interactive = message.get("interactive", {})
+    reply = interactive.get("list_reply") or interactive.get("button_reply") or {}
+    return TUTORIAL_BY_COMMAND.get(reply.get("id"))
+
+
+def build_interactive_menu_payload(recipient: str) -> dict[str, Any]:
+    rows = [
+        {
+            "id": tutorial["command"],
+            "title": tutorial["menu_title"],
+            "description": tutorial["menu_description"],
+        }
+        for tutorial in TUTORIALS
+    ]
+
+    return {
+        "messaging_product": "whatsapp",
+        "to": recipient,
+        "type": "interactive",
+        "interactive": {
+            "type": "list",
+            "header": {
+                "type": "text",
+                "text": "Tutoriais Switch",
+            },
+            "body": {
+                "text": "Escolha um tutorial na lista abaixo.",
+            },
+            "footer": {
+                "text": "Envie menu quando quiser voltar para esta lista.",
+            },
+            "action": {
+                "button": "Ver tutoriais",
+                "sections": [
+                    {
+                        "title": "Tutoriais disponiveis",
+                        "rows": rows,
+                    }
+                ],
+            },
+        },
+    }
 
 
 def is_duplicate_message(message_id: str | None) -> bool:
@@ -259,7 +312,7 @@ def is_valid_signature(raw_body: bytes, signature: str | None) -> bool:
     return hmac.compare_digest(expected_signature, signature or "")
 
 
-async def send_whatsapp_text(session: ClientSession, recipient: str, body: str) -> None:
+async def post_whatsapp_message(session: ClientSession, payload: dict[str, Any]) -> None:
     url = (
         f"https://graph.facebook.com/{GRAPH_API_VERSION}/"
         f"{WHATSAPP_PHONE_NUMBER_ID}/messages"
@@ -268,6 +321,16 @@ async def send_whatsapp_text(session: ClientSession, recipient: str, body: str) 
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json",
     }
+
+    async with session.post(url, headers=headers, json=payload) as response:
+        response_text = await response.text()
+
+        if response.status >= 400:
+            logger.error("Erro ao enviar mensagem: %s - %s", response.status, response_text)
+            response.raise_for_status()
+
+
+async def send_whatsapp_text(session: ClientSession, recipient: str, body: str) -> None:
     payload = {
         "messaging_product": "whatsapp",
         "to": recipient,
@@ -278,12 +341,11 @@ async def send_whatsapp_text(session: ClientSession, recipient: str, body: str) 
         },
     }
 
-    async with session.post(url, headers=headers, json=payload) as response:
-        response_text = await response.text()
+    await post_whatsapp_message(session, payload)
 
-        if response.status >= 400:
-            logger.error("Erro ao enviar mensagem: %s - %s", response.status, response_text)
-            response.raise_for_status()
+
+async def send_whatsapp_menu(session: ClientSession, recipient: str) -> None:
+    await post_whatsapp_message(session, build_interactive_menu_payload(recipient))
 
 
 async def handle_whatsapp_message(session: ClientSession, message: dict[str, Any]) -> None:
@@ -296,16 +358,39 @@ async def handle_whatsapp_message(session: ClientSession, message: dict[str, Any
     if not sender:
         return
 
-    if message.get("type") != "text":
+    message_type = message.get("type")
+
+    if message_type == "interactive":
+        tutorial = find_tutorial_by_interactive_reply(message)
+        if tutorial:
+            await send_whatsapp_text(session, sender, build_tutorial_text(tutorial))
+        else:
+            await send_whatsapp_text(session, sender, "Não encontrei essa opção.")
+            await send_whatsapp_menu(session, sender)
+        return
+
+    if message_type != "text":
         await send_whatsapp_text(
             session,
             sender,
             "Por enquanto eu respondo apenas mensagens de texto. Envie menu para ver as opções.",
         )
+        await send_whatsapp_menu(session, sender)
         return
 
     text_body = message.get("text", {}).get("body", "")
-    await send_whatsapp_text(session, sender, build_reply_text(text_body))
+
+    if is_menu_request(text_body):
+        await send_whatsapp_menu(session, sender)
+        return
+
+    tutorial = find_tutorial_by_text(text_body)
+    if tutorial:
+        await send_whatsapp_text(session, sender, build_tutorial_text(tutorial))
+        return
+
+    await send_whatsapp_text(session, sender, "Não encontrei essa opção. Toque no menu abaixo.")
+    await send_whatsapp_menu(session, sender)
 
 
 async def process_webhook_payload(session: ClientSession, payload: dict[str, Any]) -> None:
