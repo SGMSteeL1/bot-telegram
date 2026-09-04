@@ -1,124 +1,163 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler
 import os
+
+from aiohttp import web
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+
 
 TOKEN = os.environ["BOT_TOKEN"]
 
+TUTORIALS = {
+    "atualizar_switch": {
+        "title": "Como atualizar o Nintendo Switch para todas as versões pelo Computador",
+        "link": "https://youtu.be/prRx1qwnQEE",
+    },
+    "instalar_jogos_pc": {
+        "title": "Como instalar jogos por arquivos baixados no computador e usar Bot do Telegram (Torrent)",
+        "link": "https://encurtador.com.br/Pszl",
+    },
+    "baixar_atualizacoes": {
+        "title": "Como baixar atualizações direto do Switch",
+        "link": "https://www.youtube.com/watch?v=uGilRjPiZvM",
+    },
+    "configurar_emunand": {
+        "title": "Configuração ou reconfiguração de EmuNAND",
+        "description": "Para quem perdeu seus dados e quer refazer o sistema.",
+        "link": "https://youtu.be/cV44016kquI",
+    },
+    "migrar_cartao": {
+        "title": "Como migrar para um cartão de memória maior",
+        "link": "https://youtu.be/bhNEleowFVc",
+    },
+    "telegram_joguinhos": {
+        "title": "Telegram de Joguinhos",
+        "link": "https://nswtl.info/",
+    },
+    "baixar_torrent_switch": {
+        "title": "Baixar Jogos via torrent direto do Switch + Bot Telegram",
+        "link": "https://shre.ink/GtEz",
+    },
+}
 
-async def start(update: Update, context):
-    await update.message.reply_text(
-        "Olá! Sou o bot de ajuda. Digite /ajuda para ver a lista de comandos disponíveis."
-    )
-
-
-async def ajuda(update: Update, context):
-    await update.message.reply_text(
-        "Lista de comandos disponíveis:\n"
-        "/atualizar_switch - Como atualizar o Nintendo Switch(Via PC)\n"
-        "/instalar_tinfoil - Como instalar o Tinfoil Privado(Apenas para contratantes)\n"
-        # "/servidor_arquivos - Como acessar servidor de arquivos no Windows\n"
-        "/instalar_jogos_pc - Como instalar jogos baixados no computador\n"
-        "/baixar_atualizacoes - Como baixar atualizações direto do Switch\n"
-        "/configurar_emunand - Configuração ou reconfiguração de EmuNAND\n"
-        "/migrar_cartao - Como migrar para um cartão de memória maior\n"
-        "/configurar_tinfoil - Como configurar o Tinfoil para baixar jogos grátis"
-    )
-
-
-async def atualizar_switch(update: Update, context):
-    await update.message.reply_text(
-        "🔧 Como atualizar o Nintendo Switch para todas as versões pelo Computador:\n"
-        "Link: https://youtu.be/prRx1qwnQEE"
-    )
-
-
-async def instalar_tinfoil(update: Update, context):
-    await update.message.reply_text(
-        "🎮 Como instalar Tinfoil (Para servidor privado):\n"
-        "Link: https://www.youtube.com/watch?v=yMhi4M08vLg "
-    )
-
-
-async def servidor_arquivos(update: Update, context):
-    await update.message.reply_text(
-        "📁 Como acessar servidor de arquivos para atualizações, modificações e jogos direto do Windows:\n"
-        "Link: https://url.gratis/CcSdAz"
-    )
+USAGE_NOTICE = (
+    "Use os tutoriais apenas com conteúdos, arquivos e backups que você tem direito de acessar."
+)
 
 
-async def instalar_jogos_pc(update: Update, context):
-    await update.message.reply_text(
-        "💾 Como instalar jogos por arquivos baixados no computador:\n"
-        "Link: https://abrir.link/xiWjW"
-    )
+def build_menu_text() -> str:
+    lines = [
+        "Olá! Sou o bot de ajuda para tutoriais de Nintendo Switch.",
+        "",
+        "Digite um dos comandos abaixo:",
+    ]
+
+    for command, tutorial in TUTORIALS.items():
+        lines.append(f"/{command} - {tutorial['title']}")
+
+    lines.extend(["", USAGE_NOTICE])
+    return "\n".join(lines)
 
 
-async def baixar_atualizacoes(update: Update, context):
-    await update.message.reply_text(
-        "📡 Como baixar atualizações direto do Switch:\n"
-        "Instruções: Realizar primeiro a atualização manual no primeiro item desse artigo.\n"
-        "Link: https://www.youtube.com/watch?v=uGilRjPiZvM"
-    )
+def build_tutorial_text(command: str) -> str:
+    tutorial = TUTORIALS[command]
+    lines = [tutorial["title"]]
+
+    if tutorial.get("description"):
+        lines.extend(["", tutorial["description"]])
+
+    lines.extend(["", f"Link: {tutorial['link']}"])
+    return "\n".join(lines)
 
 
-async def configurar_emunand(update: Update, context):
-    await update.message.reply_text(
-        "⚙️ Configuração ou reconfiguração de EmuNAND:\n"
-        "Link: https://youtu.be/cV44016kquI"
-    )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message:
+        await update.message.reply_text(build_menu_text())
 
 
-async def migrar_cartao(update: Update, context):
-    await update.message.reply_text(
-        "💾 Como migrar para um cartão de memória maior:\n"
-        "Link: https://youtu.be/bhNEleowFVc"
-    )
+async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message:
+        await update.message.reply_text(build_menu_text())
 
 
-async def configurar_tinfoil(update: Update, context):
-    await update.message.reply_text(
-        "🛠️ Como configurar o Tinfoil:\n"
-        "1️⃣ Abra o Tinfoil e vá até 'file browse' ou 'explorador de arquivos'.\n"
-        "2️⃣ Aperte '-' do Joy-Con para adicionar a loja.\n"
-        "   - Protocol: http\n"
-        "   - Host: 58.9.110.20\n"
-        "   - Login: (deixe em branco)\n"
-        "   - Senha: (deixe em branco)\n"
-        "   - Port: 54331\n"
-        "   - Title: Shop Thay\n"
-        "3️⃣ Pressione 'X' para salvar.\n"
-        "4️⃣ Feche e abra o Tinfoil novamente.\n"
-        "✅ Agora você pode baixar jogos no Tinfoil de graça!"
-    )
+def create_tutorial_handler(command: str):
+    async def handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if update.message:
+            await update.message.reply_text(build_tutorial_text(command))
+
+    return handler
 
 
-def main():
-    app = Application.builder().token(TOKEN).build()
+async def comando_desconhecido(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message:
+        await update.message.reply_text(
+            "Comando não encontrado. Digite /ajuda para ver a lista de opções disponíveis."
+        )
+
+
+def build_telegram_app() -> Application:
+    app = Application.builder().token(TOKEN).updater(None).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ajuda", ajuda))
-    app.add_handler(CommandHandler("atualizar_switch", atualizar_switch))
-    app.add_handler(CommandHandler("instalar_tinfoil", instalar_tinfoil))
-    app.add_handler(CommandHandler("servidor_arquivos", servidor_arquivos))
-    app.add_handler(CommandHandler("instalar_jogos_pc", instalar_jogos_pc))
-    app.add_handler(CommandHandler("baixar_atualizacoes", baixar_atualizacoes))
-    app.add_handler(CommandHandler("configurar_emunand", configurar_emunand))
-    app.add_handler(CommandHandler("migrar_cartao", migrar_cartao))
-    app.add_handler(CommandHandler("configurar_tinfoil", configurar_tinfoil))
 
-    port = int(os.environ.get("PORT", 10000))
-    webhook_url = os.environ["WEBHOOK_URL"]
-    webhook_path = os.environ.get("WEBHOOK_PATH", "telegram-webhook")
+    for command in TUTORIALS:
+        app.add_handler(CommandHandler(command, create_tutorial_handler(command)))
 
-    print("Bot está rodando via webhook...")
+    app.add_handler(MessageHandler(filters.COMMAND, comando_desconhecido))
+    return app
 
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=port,
-        url_path=webhook_path,
-        webhook_url=f"{webhook_url}/{webhook_path}",
-        drop_pending_updates=True,
+
+async def health_check(request: web.Request) -> web.Response:
+    return web.Response(text="Bot Telegram está online!")
+
+
+async def telegram_webhook(request: web.Request) -> web.Response:
+    telegram_app: Application = request.app["telegram_app"]
+    data = await request.json()
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.process_update(update)
+    return web.Response(text="ok")
+
+
+async def on_startup(app: web.Application) -> None:
+    telegram_app: Application = app["telegram_app"]
+    webhook_url = app["webhook_url"]
+    webhook_path = app["webhook_path"]
+    drop_pending_updates = app["drop_pending_updates"]
+
+    await telegram_app.initialize()
+    await telegram_app.start()
+    await telegram_app.bot.set_webhook(
+        url=f"{webhook_url}/{webhook_path}",
+        drop_pending_updates=drop_pending_updates,
     )
+
+    print(f"Bot está rodando via webhook em {webhook_url}/{webhook_path}")
+
+
+async def on_cleanup(app: web.Application) -> None:
+    telegram_app: Application = app["telegram_app"]
+    await telegram_app.stop()
+    await telegram_app.shutdown()
+
+
+def main() -> None:
+    port = int(os.environ.get("PORT", 10000))
+    webhook_url = os.environ["WEBHOOK_URL"].rstrip("/")
+    webhook_path = os.environ.get("WEBHOOK_PATH", "telegram-webhook").strip("/")
+    drop_pending_updates = os.environ.get("DROP_PENDING_UPDATES", "false").lower() == "true"
+
+    web_app = web.Application()
+    web_app["telegram_app"] = build_telegram_app()
+    web_app["webhook_url"] = webhook_url
+    web_app["webhook_path"] = webhook_path
+    web_app["drop_pending_updates"] = drop_pending_updates
+    web_app.router.add_get("/", health_check)
+    web_app.router.add_post(f"/{webhook_path}", telegram_webhook)
+    web_app.on_startup.append(on_startup)
+    web_app.on_cleanup.append(on_cleanup)
+
+    web.run_app(web_app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
